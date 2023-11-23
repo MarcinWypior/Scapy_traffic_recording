@@ -1,14 +1,17 @@
 from scapy.all import sniff, wrpcap, rdpcap
 import threading
 
+from scapy.plist import PacketList
+
+
 class ScapyListener:
     def __init__(self, network_adapter):
         self.network_adapter = network_adapter
-        self._capture_thread = threading.Thread(target=self.__sniff_interface, args=(self,))
         self._stop_sniffing = False
+        self.path_to_capture = f'{self.network_adapter}_captured_traffic.pcapng'
 
     def __packet_callback(self, packet):
-        wrpcap('captured_traffic.pcap', packet, append=True)
+        wrpcap(f'{self.network_adapter}_captured_traffic.pcapng', packet, append=True)
 
     def __stop_filter(self, pkt):
         return self._stop_sniffing
@@ -17,26 +20,27 @@ class ScapyListener:
         sniff(iface=self.network_adapter, prn=self.__packet_callback, store=0, stop_filter=self.__stop_filter)
 
     def start_capture(self):
-        self._stop_sniffing = True
+        self._capture_thread = threading.Thread(target=self.__sniff_interface, args=(self,))
+        self._stop_sniffing = False
         self._capture_thread.start()
 
     def stop_capture(self):
         self._stop_sniffing = True
         self._capture_thread.join()
-        # At this point, the capture thread has completed, and you can proceed with other tasks
-        print("Capture complete.")
 
+    def read_recorded_traffic(self) -> PacketList:
+        return rdpcap(self.path_to_capture)
 
 if __name__ == "__main__":
+    my_scapy_listener = ScapyListener(network_adapter="Wi-Fi")
 
-    my_scapy_listner = ScapyListener(network_adapter="Wi-Fi")
+    my_scapy_listener.start_capture()
 
-    my_scapy_listner.start_capture()
-
-    # Optionally, you can perform other tasks here while the capture is ongoing
     input("press enter to stop")
 
-    my_scapy_listner.stop_capture()
+    my_scapy_listener.stop_capture()
 
+    packets = my_scapy_listener.read_recorded_traffic()
 
-
+    for packet in packets:
+        print(packet.show())
