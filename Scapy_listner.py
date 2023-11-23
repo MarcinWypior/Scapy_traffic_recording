@@ -1,6 +1,7 @@
-from scapy.all import sniff, wrpcap, rdpcap
 import threading
+import os
 
+from scapy.all import sniff, wrpcap, rdpcap
 from scapy.plist import PacketList
 
 
@@ -31,6 +32,16 @@ class ScapyListener:
     def read_recorded_traffic(self) -> PacketList:
         return rdpcap(self.path_to_capture)
 
+    def delete_capture_file(self):
+        file_name = f'{self.network_adapter}_captured_traffic.pcapng'
+
+        if os.path.exists(file_name):
+            os.remove(file_name)
+            print(f"Deleted {file_name}")
+        else:
+            print(f"{file_name} not found any record for {self.network_adapter}.")
+
+
 if __name__ == "__main__":
     my_scapy_listener = ScapyListener(network_adapter="Wi-Fi")
 
@@ -44,3 +55,7 @@ if __name__ == "__main__":
 
     for packet in packets:
         print(packet.show())
+
+    input("confirm to delete")
+
+    my_scapy_listener.delete_capture_file()
